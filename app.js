@@ -2,7 +2,10 @@ const midi = require('midi'); //means include this library
 const osc = require("osc");
 const http = require('http');
 const express = require('express');
-const socket = require('socket.io');
+const socket = require('socket.io')
+const nodeOsc = require('node-osc');
+
+
 
 //this variable (empty object) holds our osc message to send
 //we will fill it when we are ready to send it
@@ -65,7 +68,7 @@ first number changes depending on what kind of data comes in, like 176 for a cc 
 
 //For reciving OSC/setting up the connection in general
 var udpPort = new osc.UDPPort({
-	localAddress:"localhost",
+	localAddress:"127.0.0.1", //this is the code we'd need to change to make it connect over network... it seems to have an issue with me entering the ip address of this computer, maybe that's the problem? Use localhost to make it pick up messages locally. 
 	localPort: 1312,
 	metadata: true
 });
@@ -73,16 +76,19 @@ var udpPort = new osc.UDPPort({
 udpPort.open();
 
 udpPort.on("message", function (oscMsg, timeTag, info) {
-    //console.log("An OSC message just arrived!", oscMsg);//lets you read raw osc message
+//    console.log("An OSC message just arrived!", oscMsg);//lets you read raw osc message
     //console.log("Remote info is: ", info);
     //we get a message something like:  { address: '/amp', args: [ { type: 'f', value: 93.71991729736328 } ] }
     
-    let value = oscMsg.args[1].value; //parse osc. The different elements of the array can be the different values, so 0 could be a string telling us where the osc data came from (in this case pd) and then, here, [1] is our data, a float 
-    if(oscMsg.args[0].value == "pd"){
-	console.log("Pure data " + value); //all of our data we get from pd has the "pd" tag so this will print only stuff that comes from pd. 
-    }
+    let value = oscMsg.args[0].value; //parse osc. The different elements of the array can be the different values, so 0 could be a string telling us where the osc data came from (in this case pd) and then, here, [1] is our data, a float 
+    console.log(value);
+  //  if(oscMsg.args[0].value == "pd"){
+//	console.log("Pure data " + value); //all of our data we get from pd has the "pd" tag so this will print only stuff that comes from pd. 
+  //  }
     //oscData.amp = value;
 });
+
+
 
 
 // For sending osc (function needs to be called after an event)
@@ -93,15 +99,15 @@ function sendOSC(){
           address: "/stuff", //you can make this address anything
           args: [
               {
-                  type: "f", //change to f if you want to send a float
+                  type: "i", //change to f if you want to send a float
                   value: oscData.var1 //oscData.var1 and var2 are set in the code where sendOSC() is called. these are reset every time the code is called because of the way that this is being handled. 
               },
               {
-                  type: "f",
+                  type: "i",
                   value: oscData.var2
               }
           ]
-      }, "127.0.0.1", 4202); //needs to be DIFFERENT to the port that node is listening on
+      }, "127.0.0.1", 4202); //needs to be DIFFERENT to the port that node is listening on, currently set up to work locally
 }
 
 //Web socket code

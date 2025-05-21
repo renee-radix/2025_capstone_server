@@ -1,0 +1,30 @@
+{
+  "name": "2025_capstone_server",
+  "version": "1.0.0",
+  "description": "This is an amazing node server",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/renee-radix/2025_capstone_server.git"
+  },
+  "keywords": [
+    "great"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/renee-radix/2025_capstone_server/issues"
+  },
+  "homepage": "https://github.com/renee-radix/2025_capstone_server#readme",
+  "dependencies": {
+    "express": "^5.1.0",
+    "http": "^0.0.1-security",
+    "midi": "^2.0.0",
+    "node-osc": "^9.1.5",
+    "osc": "^2.4.5",
+    "socket.io": "^4.8.1"
+  }
+}
