@@ -3,7 +3,6 @@ const osc = require("osc");
 const http = require('http');
 const express = require('express');
 const socket = require('socket.io')
-const nodeOsc = require('node-osc');
 
 
 
@@ -51,11 +50,14 @@ input.on('message', (deltaTime, message) =>{
 	    // if you want to send a message to a subset of websocket clients (if, e.g., you have multiple sketches in a single server somehow), you could assign a room to a client using the syntax here: https://socket.io/docs/v4/rooms/
 	}
     }
-    if(input[0] == 144){
-    console.log("MIDI note: " + input[1]) //for midi notes: [0] is type, [1] is note number and [2] is whether it's on or off
-    oscData.var1 = input[1];
-    oscData.var2 = input[2];
-    sendOSC(); //we don't need to pass any data to the function because whenever this code runs we already rewrite the variables for the object
+    if(input[0] == 144){ //i.e. if the incoming midi signal is a midi note
+        console.log("MIDI note: " + input[1]); //for midi notes: [0] is type, [1] is note number and [2] is whether it's on or off
+        io.sockets.emit('midi_note', input[1]);
+
+    //oscData.var1 = input[1];
+    //oscData.var2 = input[2];
+    //currently commented out because sendOSC breaks the code
+    //sendOSC(); //we don't need to pass any data to the function because whenever this code runs we already rewrite the variables for the object
     }
 });
 input.openPort(1);
