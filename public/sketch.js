@@ -8,7 +8,7 @@ let glitching = false;
 
 let streakNum = 14;
 
-
+var socket;
 
 
 function preload() {
@@ -22,6 +22,12 @@ function setup() {
  	img.resize(width,height);
 	img.filter(POSTERIZE, 5);
 	image(img, -maxXChange, -maxYChange);
+	
+	//socket connection code
+	socket = io.connect('http://localhost:1312');
+
+	//function that takes the message from the node server
+	socket.on('midi_note', glitch);
 }
 
 function draw() {
@@ -73,11 +79,13 @@ function keyPressed() {
 		streakNum++;
 	}
 }
-function mouseClicked() {
-  glitching = !glitching;
+
+function glitch(data){
+	glitching = !glitching;
+	console.log(data.note + " " + data.vel);
 }
+//function mouseClicked() {
+//  glitching = !glitching;
+//}
 
-// is there a way I can make this have MIDI functionality? I'm struggling a little bit figuring out how given that it's all on the web
-// but idk if I can do the picture subset thing that's happening in this sketch
-
-// Visual masking? some kind of clear overlay video?
+// have glitching parameters be changed with CC's? That would also be emmitted from the server side

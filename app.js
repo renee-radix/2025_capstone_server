@@ -52,15 +52,19 @@ input.on('message', (deltaTime, message) =>{
     }
     if(input[0] == 144){ //i.e. if the incoming midi signal is a midi note
         console.log("MIDI note: " + input[1]); //for midi notes: [0] is type, [1] is note number and [2] is whether it's on or off
-        io.sockets.emit('midi_note', input[1]);
+        var data = {
+            note: input[1],
+            vel: input[2]
+            }
+        io.sockets.emit('midi_note', data);
+        console.log('Sending note to P5 sketch');
 
-    //oscData.var1 = input[1];
-    //oscData.var2 = input[2];
-    //currently commented out because sendOSC breaks the code
-    //sendOSC(); //we don't need to pass any data to the function because whenever this code runs we already rewrite the variables for the object
+        oscData.var1 = input[1];
+        oscData.var2 = input[2];
+        sendOSC(); //we don't need to pass any data to the function because whenever this code runs we already rewrite the variables for the object
     }
 });
-input.openPort(1);
+input.openPort(0);
 
 /*Console logs for MIDI:
 m: 176[number doesn't change],[cc number],[cc value]]
@@ -70,8 +74,9 @@ first number changes depending on what kind of data comes in, like 176 for a cc 
 
 //For reciving OSC/setting up the connection in general
 var udpPort = new osc.UDPPort({
-	localAddress:"127.0.0.1", //this is the code we'd need to change to make it connect over network... it seems to have an issue with me entering the ip address of this computer, maybe that's the problem? Use localhost to make it pick up messages locally. 
-	localPort: 1312,
+	localAddress:"0.0.0.0", //I'm not sure why but putting this at 0.0.0.0 fixed it somehow. This should probably stay as it is. 
+    //Everything else will need this computer's IP to talk to it, which I think can be configured to be static with the router (ask Jesse about this) 
+	localPort: 1312, //port we're reciving on
 	metadata: true
 });
 
@@ -90,10 +95,29 @@ udpPort.on("message", function (oscMsg, timeTag, info) {
     //oscData.amp = value;
 });
 
-
+udpPort.on("ready", function () {
+    udpPort.send({
+        address: "/s_new",
+        args: [
+            {
+                type: "s",
+                value: "default"
+            },
+            {
+                type: "i",
+                value: 100
+            }
+        ]
+    }, "192.168.1.64", 4202);
+});
 
 
 // For sending osc (function needs to be called after an event)
+/* Currently we only have one function for all the IP addresses but if we want to send osc to multiple places
+we'd either need multiple functions sending different data to different places
+or
+one function that recieves an IP string and inserts that in the code
+*/
 function sendOSC(){
     console.log("sending OSC")
 
@@ -109,7 +133,7 @@ function sendOSC(){
                   value: oscData.var2
               }
           ]
-      }, "127.0.0.1", 4202); //needs to be DIFFERENT to the port that node is listening on, currently set up to work locally
+      }, "192.168.1.64", 4202); //needs to be DIFFERENT to the port that node is listening on, currently set up to work locally
 }
 
 //Web socket code
@@ -134,7 +158,6 @@ server.listen(PORT)
 
 /*
 Next steps:
-Get this to all work over a network! (at school)
 Build a motion detection device and write some code for it
 Intergrate midi code more into the visual glitching
 Get audio glitching to be automatable
