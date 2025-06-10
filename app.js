@@ -1,8 +1,17 @@
 const midi = require('midi'); //means include this library
 const osc = require("osc");
-const http = require('http');
-const express = require('express');
-const socket = require('socket.io')
+
+//IP addresses: This will need to be set up when we get to testing
+//Alternatively we can use mDNS but we'd need Jesse to help with that
+const cabinetIP;
+const ctrlRmIP;
+const chladniIP;
+const audioIP;
+const p5IP1;
+//may or may not use this
+const p5IP2;
+
+//For each IP we will send on 1312. Since this sketch isn't hosting P5 anymore we don't need to have a seperate port for that
 
 
 
@@ -13,18 +22,6 @@ let oscData = {};
 //this is the code that gets the sample P5 sketch onto the node server. To access type "localhost::1312" into a web browser. Text is stored in public directory
 
 const PORT = 1312; //port for hosting sketch AND reciving OSC data from, in this case, puredata (idk if we want multiple different ones for multiple types of data). 
-const app = express();
-app.use(express.static('public'));
-app.set('port', PORT);
-//(can you have express set up multiple sketches on multiple ports or do you need multiple node servers for that?)
-
-
-//Setting up the server on port 1312, from the above down to here is all we need to host the sketch (plus the listen code at the end)
-const server = http.createServer(app)
-server.on('listening', () => {
- console.log('Listening on port '+PORT)
-})
-
 
 console.log("This text means the server is running!") //debug hello world text
 
@@ -32,7 +29,7 @@ console.log("This text means the server is running!") //debug hello world text
 const input = new midi.Input(); //sets up new input
 console.log("Number of available input ports: " + input.getPortCount());
 
-//configures midi callback
+//configures midi callback for range finders. Need to work on this in conjunction with range finder code. 
 //message is array of numbers corresponding to midi bytes: [status, data1, data2]
 //for CC we'll likely get something like: B1[controller number][controller value]
 input.on('message', (deltaTime, message) =>{
@@ -40,50 +37,43 @@ input.on('message', (deltaTime, message) =>{
     console.log(message);
     let input = message;
     if(input[0] == 176){
-	console.log("Controller change: " + input[1] + " " + input[2])
-	if(input[1] == 14){ //14 is first knob on my midi keyboard
-	    io.sockets.emit('midi_cc', input[2]); //emit this data via web sockets to all the connected clients
-	    // try this instead if the above doesn't work: 
-	    // socket.broadcast.emit('midi_cc', input[2]);
-	     
-	    
-	    // if you want to send a message to a subset of websocket clients (if, e.g., you have multiple sketches in a single server somehow), you could assign a room to a client using the syntax here: https://socket.io/docs/v4/rooms/
-	}
+	console.log("Controller change: " + input[1] + " " + input[2]);
+        oscData.var1=input[1]; //CC number
+        oscData.var2=input[2]; //value
+        sendOsc(audioIP, "/ccChange"); //Sending to max, idk if getting it to send too many osc messages will cause it to bug out but we can see. Currently this doesn't do anything on the max end but I can change that if I want to.
     }
     if(input[0] == 144){ //i.e. if the incoming midi signal is a midi note
         console.log("MIDI note: " + input[1]); //for midi notes: [0] is type, [1] is note number and [2] is whether it's on or off
-        var data = {
-            note: input[1],
-            vel: input[2]
-            }
-        io.sockets.emit('midi_note', data);
-        console.log('Sending note to P5 sketch');
-
-        oscData.var1 = input[1];
-        oscData.var2 = input[2];
-        sendOSC(); //we don't need to pass any data to the function because whenever this code runs we already rewrite the variables for the object
+        if(input[1] == 24){ //if we get a message from range finder 1
+            //Send OSC to both max and garbage sketch
+            oscData.var1 = 54;
+            sendOsc(audioIP, "/glitch1");
+            sendOsc(p5IP1, "/sketch1");
+        }
+        //If range finder 2 gets booped send message to robot sketch and glitch2 message
+        if(input[1] == 25){
+            oscData.var1 = 55;
+            sendOsc(audioIP, "/glitch2");
+            sendOsc(p5IP2, "/sketch2");
+        }
+        // If range finder 3 gets booped I'm not sure what to do but maybe that's good incentive to not have it present or just make it hook directly up to sine tone generation
     }
 });
 input.openPort(0);
 
-/*Console logs for MIDI:
-m: 176[number doesn't change],[cc number],[cc value]]
-first number changes depending on what kind of data comes in, like 176 for a cc change, 144 for anote on, 128 for noteoff,
-244 for pitch bending etc. 
-*/
 
-//For reciving OSC/setting up the connection in general
+//For reciving OSC: the only thing sending OSC to this server is the RFIDs that are using a different protocol so this may not be necessary
 var udpPort = new osc.UDPPort({
 	localAddress:"0.0.0.0", //I'm not sure why but putting this at 0.0.0.0 fixed it somehow. This should probably stay as it is. 
-    //Everything else will need this computer's IP to talk to it, which I think can be configured to be static with the router (ask Jesse about this) 
 	localPort: 1312, //port we're reciving on
 	metadata: true
 });
 
 udpPort.open();
 
+//This may also be unnecessary now: for reciving osc via IP
 udpPort.on("message", function (oscMsg, timeTag, info) {
-//    console.log("An OSC message just arrived!", oscMsg);//lets you read raw osc message
+    //console.log("An OSC message just arrived!", oscMsg);//lets you read raw osc message
     //console.log("Remote info is: ", info);
     //we get a message something like:  { address: '/amp', args: [ { type: 'f', value: 93.71991729736328 } ] }
     
@@ -95,34 +85,39 @@ udpPort.on("message", function (oscMsg, timeTag, info) {
     //oscData.amp = value;
 });
 
-udpPort.on("ready", function () {
-    udpPort.send({
-        address: "/s_new",
-        args: [
-            {
-                type: "s",
-                value: "default"
-            },
-            {
-                type: "i",
-                value: 100
-            }
-        ]
-    }, "192.168.1.64", 4202);
-});
+// I don't think we need this function anymore but I want to double check when we get access to the space
+// It's meant to be a test message I think to ensure the connection works
+//udpPort.on("ready", function () {
+//    udpPort.send({
+//        address: "/s_new",
+//        args: [
+//            {
+//                type: "s",
+//                value: "default"
+//            },
+//            {
+//                type: "i",
+//                value: 100
+//            }
+//        ]
+//    }, "192.168.1.64", 4202);
+//});
 
+//Function that runs when we get a message that RFID tag got booped
+//I would write glitch() in here, I think
+function RFIDBooped(location){ //If there only ends up being one reader then the location isn't necessary, I should just cut that out. As it stands both cabinet and drucilla's thing will get the location information, and can choose to use that if they want or not.
+    oscData.var1 = location;
+    sendOsc(cabinetIP, "/cabinet")
+    sendOsc(ctrlRmIP, "/controlRoom")
+}
 
-// For sending osc (function needs to be called after an event)
-/* Currently we only have one function for all the IP addresses but if we want to send osc to multiple places
-we'd either need multiple functions sending different data to different places
-or
-one function that recieves an IP string and inserts that in the code
-*/
-function sendOSC(){
+// Generic function for sending osc 
+//Function gets passed IP (should be one of the constants at the top), address (gets passed a string beginning with "/") and anything else I want (in the oscData object, needs to be integers)
+function sendOSC(ip, addr){
     console.log("sending OSC")
 
       udpPort.send({
-          address: "/stuff", //you can make this address anything
+          address: addr, //you can make this address anything as long as it begins with /, e.g. /stuff
           args: [
               {
                   type: "i", //change to f if you want to send a float
@@ -133,28 +128,9 @@ function sendOSC(){
                   value: oscData.var2
               }
           ]
-      }, "192.168.1.64", 4202); //needs to be DIFFERENT to the port that node is listening on, currently set up to work locally
+      }, ip, 4202); //needs to be DIFFERENT to the port that node is listening on if set up to work locally 
 }
 
-//Web socket code
-//Remember in order to make our public sketch a socket.io client we need to reference sockets.io in the html file (see that file) and the sketch itself (see that file too)
-
-//Establishing a connection and printing to console when a new connection happens:
-var io = socket(server);
-io.sockets.on('connection', newConnection);
-
-function newConnection(socket){ //This function runs every time there's a new socket connection. Anything to do with reciving code from socket connections needs to go here
-    //The socket object has a ton of associated metadata, id being just one of those metadata points. It's unique for each connection. 
-    console.log("A new client has connected! ID: " + socket.id); 
-}
-//the data we want is already coming in via osc and midi so there's no need to put it in the client side code
-
-function sendToSketch(value){
-	console.log("P5 sketch picking up " + value);
-	//the actual part where it's sent to the sketch is handled in the midi callback since that's what's being sent
-    }
-
-server.listen(PORT)
 
 /*
 Next steps:

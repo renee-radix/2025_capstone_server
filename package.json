@@ -20,11 +20,7 @@
   },
   "homepage": "https://github.com/renee-radix/2025_capstone_server#readme",
   "dependencies": {
-    "express": "^5.1.0",
-    "http": "^0.0.1-security",
     "midi": "^2.0.0",
-    "node-osc": "^9.1.5",
     "osc": "^2.4.5",
-    "socket.io": "^4.8.1"
   }
 }
