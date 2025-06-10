@@ -46,13 +46,13 @@ input.on('message', (deltaTime, message) =>{
         console.log("MIDI note: " + input[1]); //for midi notes: [0] is type, [1] is note number and [2] is whether it's on or off
         if(input[1] == 24){ //if we get a message from range finder 1
             //Send OSC to both max and garbage sketch
-            oscData.var1 = 54;
+            oscData.var1 = 0; //0 is important for the P5 sketch, since 0 means glitch and 1 means flash
             sendOsc(audioIP, "/glitch1");
             sendOsc(p5IP1, "/sketch1");
         }
         //If range finder 2 gets booped send message to robot sketch and glitch2 message
         if(input[1] == 25){
-            oscData.var1 = 55;
+            oscData.var1 = 0;
             sendOsc(audioIP, "/glitch2");
             sendOsc(p5IP2, "/sketch2");
         }
@@ -109,6 +109,9 @@ function RFIDBooped(location){ //If there only ends up being one reader then the
     oscData.var1 = location;
     sendOsc(cabinetIP, "/cabinet")
     sendOsc(ctrlRmIP, "/controlRoom")
+    oscData.var1 = 1; //for P5 sketches this means "flash glitch". If there are multiple ID readers I could have it send to a different sketch depending on what the location code is but we'll see
+    sendOsc(p5IP1, "/sketch1");
+    sendOsc(p5IP2, "sketch2");
 }
 
 // Generic function for sending osc 
