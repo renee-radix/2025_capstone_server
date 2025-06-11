@@ -1,18 +1,28 @@
-const midi = require('midi'); //means include this library
-const osc = require("osc");
+const midi = require("midi");
+const osc = require('osc');
+//const serialYoinker = require('./ESP32Code/serialYoinker.js')
+
+(async () => {
+    const { default : _ } = await import('./ESP32Code/serialYoinker.js');
+   // console.log(_.chunk([1,2,3,4],2));
+})();
+
 
 //IP addresses: This will need to be set up when we get to testing
 //Alternatively we can use mDNS but we'd need Jesse to help with that
-const cabinetIP;
-const ctrlRmIP;
-const chladniIP;
-const audioIP;
-const p5IP1;
+//These should all now be fixed
+const cabinetIP = 'cabinet1.local';
+const audioIP = '192.168.1.47';
+
+//fill these in when we're ready
+//const cabinetIP2 = 'cabinet2.local';
+//const ctrlRmIP;
+//const chladniIP;
+//const p5IP1;
 //may or may not use this
-const p5IP2;
+//const p5IP2;
 
 //For each IP we will send on 1312. Since this sketch isn't hosting P5 anymore we don't need to have a seperate port for that
-
 
 
 //this variable (empty object) holds our osc message to send
@@ -55,6 +65,9 @@ input.on('message', (deltaTime, message) =>{
             oscData.var1 = 0;
             sendOsc(audioIP, "/glitch2");
             sendOsc(p5IP2, "/sketch2");
+        }
+        if(input[1] == 56){
+            glitch();
         }
         // If range finder 3 gets booped I'm not sure what to do but maybe that's good incentive to not have it present or just make it hook directly up to sine tone generation
     }
@@ -132,6 +145,27 @@ function sendOSC(ip, addr){
               }
           ]
       }, ip, 4202); //needs to be DIFFERENT to the port that node is listening on if set up to work locally 
+}
+
+//ESP32 code:
+//
+function parseRFIDMessage(line) { //callback that gets RFID messages and parses them
+  // Example line:
+  // "[ESP-NOW] From: F0:F5:BD:07:82:F9 | Message: RFIDreader1 95 ac 59 3e"
+  const match = line.match(/Message:\s*(\S+)\s+(.+)/);
+  if (!match) return null;
+
+  console.log(match);  
+
+  return {
+    device: match[1],
+    message: match[2]
+  };
+}
+
+function glitch(){ //sends "Pong" over the serial port, causing lights to flash
+    console.log("Glitching LEDs");
+  SerialBridge.sendToESP32("Pong!");
 }
 
 

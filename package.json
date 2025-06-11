@@ -22,5 +22,7 @@
   "dependencies": {
     "midi": "^2.0.0",
     "osc": "^2.4.5",
+    "chalk": "^5.4.1",
+    "serialport": "^13.0.0"
   }
 }
