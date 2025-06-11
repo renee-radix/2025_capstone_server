@@ -122,7 +122,13 @@ function RFIDBooped(location){ //If there only ends up being one reader then the
     oscData.var1 = location;
     sendOsc(cabinetIP, "/cabinet")
     sendOsc(ctrlRmIP, "/controlRoom")
-    oscData.var1 = 1; //for P5 sketches this means "flash glitch". If there are multiple ID readers I could have it send to a different sketch depending on what the location code is but we'll see
+    let randNum = Math.random() * 10
+    //When RFID reader is booped it has a random chance of setting the variable as a 0 or 1 for glitch or flash and then sending that to the sketches. If RFID reader doesn't work I'll just have it send a socket message in the P5 node app. 
+    if (randNum < 5){
+        oscData.var1 = 0;
+    }else{
+        oscData.var1 = 0;
+    }
     sendOsc(p5IP1, "/sketch1");
     sendOsc(p5IP2, "sketch2");
 }

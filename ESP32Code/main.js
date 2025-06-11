@@ -1,4 +1,8 @@
 import SerialBridge from './serialYoinker.js'; // Custom little library Dillon made, don't worry about what's inside there. Use functions below.
+import { Client } from 'node-osc';
+
+const client = new Client('192.168.1.48', 1312);
+
 
 // === Helper functions === //
 function parseRFIDMessage(line) { //callback that gets RFID messages and parses them
@@ -8,7 +12,11 @@ function parseRFIDMessage(line) { //callback that gets RFID messages and parses 
   if (!match) return null;
 
   console.log(match);  
-
+  
+  //send OSC when RFID message comes in
+  client.send('/RFIDBooped', 666, () => {
+  client.close();
+});
   return {
     device: match[1],
     message: match[2]
@@ -16,7 +24,7 @@ function parseRFIDMessage(line) { //callback that gets RFID messages and parses 
 }
 
 function glitch(){ //sends "Pong" over the serial port, causing lights to flash
-  console.log("glitching LEDs";
+  console.log("glitching LEDs");
   SerialBridge.sendToESP32("Pong!");
 }
 
